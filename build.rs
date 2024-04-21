@@ -1,4 +1,7 @@
 fn main() {
+    if std::env::var_os("SKIP_DOWNLOAD").is_some() {
+        return;
+    }
     download::start().unwrap();
 }
 
@@ -15,6 +18,11 @@ mod download {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     fn download_filename() -> String {
         format!("lspsd_{}_aarch64-apple-darwin.tar.gz", &VERSION)
+    }
+
+    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    fn download_filename() -> String {
+        format!("lspsd_{}_x86_64-unknown-linux-gnu.tar.gz", &VERSION)
     }
 
     // #[cfg(all(target_os = "linux", target_arch = "x86_64"))]

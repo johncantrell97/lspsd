@@ -19,14 +19,12 @@ jobs:
           - target: x86_64-apple-darwin
             archive: tar.gz
     steps:
-      - name: Set environment variable to skip build.rs
-        run: export CARGO_BUILD_PLAN=0
-
       - uses: actions/checkout@master
       - name: Compile and release
         uses: rust-build/rust-build.action@v1.4.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_DOWNLOAD: true
         with:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
@@ -34,13 +32,12 @@ jobs:
     name: release windows msvc
     runs-on: windows-latest
     steps:
-      - name: Set environment variable to skip build.rs
-        run: export CARGO_BUILD_PLAN=0
-
       - uses: actions/checkout@master
       - name: Build
         run: |
           cargo build --release
+        env:
+          SKIP_DOWNLOAD: true
       - name: tar
         run: tar --directory=target/release -czf archive.tar.gz lspsd.exe
       - name: upload
@@ -53,9 +50,6 @@ jobs:
     name: release mac os arm release
     runs-on: macos-12
     steps:
-      - name: Set environment variable to skip build.rs
-        run: export CARGO_BUILD_PLAN=0
-        
       - uses: actions/checkout@master
       - name: check toolchain
         run: rustup default
@@ -64,6 +58,8 @@ jobs:
           rustup toolchain install stable-aarch64-apple-darwin
           rustup target add aarch64-apple-darwin
           cargo build --release --target aarch64-apple-darwin
+        env:
+          SKIP_DOWNLOAD: true
       - name: tar
         run: tar --directory=target/aarch64-apple-darwin/release -czf archive.tar.gz lspsd
       - name: upload
