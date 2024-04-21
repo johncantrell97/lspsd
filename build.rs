@@ -44,14 +44,9 @@ mod download {
             std::fs::create_dir(&lspsd_exe_home)
                 .with_context(|| format!("cannot create dir {:?}", lspsd_exe_home))?;
         }
-        let existing_filename = lspsd_exe_home
-            .join(format!("lspsd-{}", VERSION))
-            .join("bin")
-            .join("lspsd");
+        let existing_filename = lspsd_exe_home.join("lspsd");
 
         if !existing_filename.exists() {
-            println!("filename:{} version:{}", download_filename, VERSION);
-
             let (_file_or_url, tarball_bytes) = match std::env::var("LSPSD_TARBALL_FILE") {
                 Err(_) => {
                     let download_endpoint = std::env::var("LSPSD_DOWNLOAD_ENDPOINT").unwrap_or(
@@ -83,10 +78,11 @@ mod download {
 
             if download_filename.ends_with(".tar.gz") {
                 let d = GzDecoder::new(&tarball_bytes[..]);
-
                 let mut archive = Archive::new(d);
+                
                 for mut entry in archive.entries().unwrap().flatten() {
                     if let Ok(file) = entry.path() {
+                      println!("cargo:warning=extracted file: {:?}", file);
                         if file.ends_with("lspsd") {
                             entry.unpack_in(&lspsd_exe_home).unwrap();
                         }

@@ -323,11 +323,11 @@ impl LspsD {
 impl LspsD {
     /// create LspsD struct with the downloaded executable.
     pub fn from_downloaded() -> anyhow::Result<LspsD> {
-        LspsD::new(downloaded_exe_path()?)
+        LspsD::new(downloaded_exe_path())
     }
     /// create LspsD struct with the downloaded executable and given Conf.
     pub fn from_downloaded_with_conf(conf: &Conf) -> anyhow::Result<LspsD> {
-        LspsD::with_conf(downloaded_exe_path()?, conf)
+        LspsD::with_conf(downloaded_exe_path(), conf)
     }
 }
 
@@ -356,19 +356,17 @@ impl From<std::io::Error> for Error {
 }
 
 /// Provide the lspsd executable path if a version feature has been specified
-pub fn downloaded_exe_path() -> anyhow::Result<String> {
+pub fn downloaded_exe_path() -> String {
     let mut path: PathBuf = env!("OUT_DIR").into();
     path.push("lspsd");
-    path.push(format!("lspsd-{}", versions::VERSION));
-    path.push("bin");
-
+  
     if cfg!(target_os = "windows") {
         path.push("lspsd.exe");
     } else {
         path.push("lspsd");
     }
 
-    Ok(format!("{}", path.display()))
+    format!("{}", path.display())
 }
 
 /// Returns the daemon `lspsd` executable with the following precedence:
@@ -381,12 +379,7 @@ pub fn exe_path() -> anyhow::Result<String> {
     if let Ok(path) = std::env::var("LSPSD_EXE") {
         return Ok(path);
     }
-    if let Ok(path) = downloaded_exe_path() {
-        return Ok(path);
-    }
-    which::which("lspsd")
-        .map_err(|_| Error::NoLspsdExecutableFound.into())
-        .map(|p| p.display().to_string())
+    Ok(downloaded_exe_path())
 }
 
 /// Validate the specified arg if there is any unavailable or deprecated one

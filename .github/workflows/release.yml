@@ -19,6 +19,9 @@ jobs:
           - target: x86_64-apple-darwin
             archive: tar.gz
     steps:
+      - name: Set environment variable to skip build.rs
+        run: export CARGO_BUILD_PLAN=0
+
       - uses: actions/checkout@master
       - name: Compile and release
         uses: rust-build/rust-build.action@v1.4.5
@@ -31,12 +34,15 @@ jobs:
     name: release windows msvc
     runs-on: windows-latest
     steps:
+      - name: Set environment variable to skip build.rs
+        run: export CARGO_BUILD_PLAN=0
+
       - uses: actions/checkout@master
       - name: Build
         run: |
           cargo build --release
       - name: tar
-        run: tar --directory=target/release -cf archive.tar.gz lspsd.exe
+        run: tar --directory=target/release -czf archive.tar.gz lspsd.exe
       - name: upload
         run: |
           $id = gh api -H "Accept: application/vnd.github+json" /repos/johncantrell97/lspsd/releases/tags/${{ github.ref_name }} --jq .id
@@ -47,6 +53,9 @@ jobs:
     name: release mac os arm release
     runs-on: macos-12
     steps:
+      - name: Set environment variable to skip build.rs
+        run: export CARGO_BUILD_PLAN=0
+        
       - uses: actions/checkout@master
       - name: check toolchain
         run: rustup default
@@ -56,7 +65,7 @@ jobs:
           rustup target add aarch64-apple-darwin
           cargo build --release --target aarch64-apple-darwin
       - name: tar
-        run: tar --directory=target/aarch64-apple-darwin/release -cf archive.tar.gz lspsd
+        run: tar --directory=target/aarch64-apple-darwin/release -czf archive.tar.gz lspsd
       - name: upload
         run: |
           id=$(gh api -H "Accept: application/vnd.github+json" /repos/johncantrell97/lspsd/releases/tags/${{ github.ref_name }} --jq .id)
