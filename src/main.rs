@@ -7,6 +7,8 @@ use ldk_node::lightning::ln::msgs::SocketAddress;
 use ldk_node::lightning_persister::fs_store::FilesystemStore;
 use ldk_node::Node;
 use ldk_node::{bitcoin::Network, Builder, Config};
+use tokio::runtime::Runtime;
+
 
 use argh::FromArgs;
 use lspsd::{FundingAddress, LspConfig};
@@ -38,8 +40,7 @@ struct AppState {
     node: Arc<Node<FilesystemStore>>,
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let args: LspArgs = argh::from_env();
 
     let mut config = Config::default();
@@ -72,10 +73,15 @@ async fn main() {
         .route("/funding-address", get(funding_address))
         .with_state(app_state);
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.api_port))
+    let rt  = Runtime::new().unwrap();
+    rt.block_on(async {
+        let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.api_port))
         .await
         .unwrap();
-    axum::serve(listener, app).await.unwrap();
+    
+        axum::serve(listener, app).await.unwrap();
+    });
+    
 }
 
 async fn config_handler(State(state): State<AppState>) -> Json<LspConfig> {

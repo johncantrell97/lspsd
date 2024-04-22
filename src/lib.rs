@@ -222,14 +222,20 @@ impl LspsD {
         let work_dir_path = work_dir.path();
         debug!("work_dir: {:?}", work_dir_path);
 
+        let mut args = vec![];
+
         let api_port = get_available_port()?;
         let api_socket = SocketAddrV4::new(LOCAL_IP, api_port);
         let api_url = format!("http://{}", api_socket);
-        let api_arg = format!("--api_port {}", api_port);
+
+        args.push("--api-port".to_string());
+        args.push(format!("{}", api_port));
 
         let lightning_port = get_available_port()?;
         let lightning_socket = SocketAddrV4::new(LOCAL_IP, lightning_port);
-        let lightning_arg = format!("--lightning_port {}", lightning_port);
+  
+        args.push("--lightning-port".to_string());
+        args.push(format!("{}", lightning_port));
 
         let stdout = if conf.view_stdout {
             Stdio::inherit()
@@ -237,23 +243,26 @@ impl LspsD {
             Stdio::null()
         };
 
-        let network_arg = format!("--network {}", conf.network);
+        args.push("--network".to_string());
+        args.push(format!("{}", conf.network));
 
-        let datadir_arg = format!("--data_dir {}", work_dir_path.display());
-        let mut default_args = vec![datadir_arg, api_arg, lightning_arg, network_arg];
+        args.push("--data-dir".to_string());
+        args.push(format!("{}", work_dir_path.display()));
 
         if let Some(esplora_url) = &conf.esplora_url {
-            default_args.push(format!("--esplora_url {}", esplora_url));
+            args.push("--esplora-url".to_string());
+            args.push(format!("{}", esplora_url));
         }
 
         if let Some(rgs_url) = &conf.rgs_url {
-            default_args.push(format!("--rgs_url {}", rgs_url));
+          args.push("--rgs-url".to_string());
+          args.push(format!("{}", rgs_url));
         }
 
-        debug!("launching {:?} with args: {:?}", exe.as_ref(), default_args,);
+        debug!("launching {:?} with args: {:?}", exe.as_ref(), args);
 
         let mut process = Command::new(exe.as_ref())
-            .args(default_args)
+            .args(args)
             .stdout(stdout)
             .spawn()
             .with_context(|| format!("Error while executing {:?}", exe.as_ref()))?;

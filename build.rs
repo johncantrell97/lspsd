@@ -15,28 +15,13 @@ mod download {
 
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     fn download_filename() -> String {
-        format!("lspsd_{}_aarch64-apple-darwin.zip", &VERSION)
+        format!("lspsd-{}-aarch64-apple-darwin.zip", &VERSION)
     }
 
-    #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     fn download_filename() -> String {
-        format!("lspsd_{}_x86_64-unknown-linux-gnu.zip", &VERSION)
+        format!("lspsd-{}-x86_64-linux-gnu.zip", &VERSION)
     }
-
-    // #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-    // fn download_filename() -> String {
-    //     format!("lspsd_{}_x86_64-linux-gnu.tar.gz", &VERSION)
-    // }
-
-    // #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-    // fn download_filename() -> String {
-    //     format!("lspsd_{}_aarch64-linux-gnu.tar.gz", &VERSION)
-    // }
-
-    // #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-    // fn download_filename() -> String {
-    //     format!("lspsd_{}_win64.zip", &VERSION)
-    // }
 
     pub(crate) fn start() -> anyhow::Result<()> {
         if std::env::var_os("LSPSD_SKIP_DOWNLOAD").is_some() {
