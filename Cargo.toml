@@ -1,6 +1,6 @@
 [package]
 name = "lspsd"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 build = "build.rs"
 
@@ -25,9 +25,11 @@ which = "6.0.1"
 [build-dependencies]
 bitcoin_hashes = { version = "0.13" }
 flate2 = { version = "1.0" }
-tar = { version = "0.4" }
+zip = { version = "0.6", default-features = false, features = [
+  "bzip2",
+  "deflate",
+] }
 minreq = { version = "2.9.1", default-features = false, features = [
     "https", "json-using-serde"
 ] }
-zip = { version = "0.6" }
 anyhow = "1.0.66"
