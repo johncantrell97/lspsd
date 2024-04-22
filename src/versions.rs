@@ -1,1 +1,1 @@
-pub const VERSION: &str = "v0.1.5";
+pub const VERSION: &str = "v0.1.6";
