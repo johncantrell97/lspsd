@@ -1,12 +1,13 @@
+use std::str::FromStr;
+
 use ldk_node::{
-    bitcoin::secp256k1::PublicKey,
-    lightning::ln::msgs::SocketAddress,
+    bitcoin::secp256k1::PublicKey, lightning::ln::msgs::SocketAddress,
     lightning_invoice::Bolt11Invoice,
 };
 
 use crate::{
-    CompactChannel, FundingAddress, LspConfig, OpenChannelRequest, OpenChannelResponse,
-    PayInvoiceRequest, PayInvoiceResponse,
+    CompactChannel, FundingAddress, GetInvoiceRequest, GetInvoiceResponse, LspConfig,
+    OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest, PayInvoiceResponse,
 };
 
 #[derive(Debug)]
@@ -55,11 +56,34 @@ impl LspsClient {
     }
 
     pub fn pay_invoice(&self, invoice: &Bolt11Invoice) -> Result<String, minreq::Error> {
-        let url = format!("{}/invoices", self.base_url);
+        let url: String = format!("{}/pay-invoice", self.base_url);
         let req = PayInvoiceRequest {
             invoice: invoice.to_string(),
         };
         let res = minreq::post(url).with_json(&req).unwrap().send()?;
         Ok(res.json::<PayInvoiceResponse>()?.payment_hash)
+    }
+
+    pub fn get_invoice(
+        &self,
+        amount_sats: u64,
+        description: &str,
+        expiry_secs: u32,
+    ) -> Result<Bolt11Invoice, minreq::Error> {
+        let url = format!("{}/get-invoice", self.base_url);
+        let req = GetInvoiceRequest {
+            amount_sats,
+            description: description.to_string(),
+            expiry_secs,
+        };
+        let res = minreq::post(url).with_json(&req).unwrap().send()?;
+        let invoice_str = res.json::<GetInvoiceResponse>()?.invoice;
+        Ok(Bolt11Invoice::from_str(&invoice_str).unwrap())
+    }
+
+    pub fn sync(&self) -> Result<(), minreq::Error> {
+        let url = format!("{}/sync", self.base_url);
+        minreq::post(url).send()?;
+        Ok(())
     }
 }

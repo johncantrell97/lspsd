@@ -18,8 +18,8 @@ use tokio::runtime::Runtime;
 
 use argh::FromArgs;
 use lspsd::{
-    FundingAddress, ListChannelsResponse, LspConfig, OpenChannelRequest, OpenChannelResponse,
-    PayInvoiceRequest, PayInvoiceResponse,
+    FundingAddress, GetInvoiceRequest, GetInvoiceResponse, ListChannelsResponse, LspConfig,
+    OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest, PayInvoiceResponse,
 };
 
 #[derive(FromArgs)]
@@ -82,7 +82,8 @@ fn main() {
         .route("/funding-address", get(funding_address))
         .route("/channels", post(open_channel))
         .route("/channels", get(list_channels))
-        .route("/invoices", post(pay_invoice))
+        .route("/pay-invoice", post(pay_invoice))
+        .route("/get-invoice", post(get_invoice))
         .route("/sync", post(sync))
         .with_state(app_state);
 
@@ -156,9 +157,21 @@ async fn pay_invoice(
     })
 }
 
-async fn sync(
-    State(state): State<AppState>
-) -> Json<Value> {
+async fn get_invoice(
+    State(state): State<AppState>,
+    Json(req): Json<GetInvoiceRequest>,
+) -> Json<GetInvoiceResponse> {
+    let invoice = state
+        .node
+        .receive_payment(req.amount_sats * 1000, &req.description, req.expiry_secs)
+        .unwrap();
+
+    Json(GetInvoiceResponse {
+        invoice: invoice.to_string(),
+    })
+}
+
+async fn sync(State(state): State<AppState>) -> Json<Value> {
     state.node.sync_wallets().unwrap();
     Json(json!({"synced": true}))
 }

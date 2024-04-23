@@ -86,6 +86,18 @@ pub struct PayInvoiceResponse {
     pub payment_hash: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetInvoiceRequest {
+    pub amount_sats: u64,
+    pub description: String,
+    pub expiry_secs: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetInvoiceResponse {
+    pub invoice: String,
+}
+
 #[derive(Debug)]
 /// Struct representing the lspsd process with related information
 pub struct LspsD {
