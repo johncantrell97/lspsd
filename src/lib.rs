@@ -3,6 +3,7 @@ mod versions;
 
 use anyhow::Context;
 use ldk_node::bitcoin::secp256k1::PublicKey;
+use ldk_node::ChannelDetails;
 use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
@@ -29,6 +30,60 @@ pub struct LspConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FundingAddress {
     pub address: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenChannelRequest {
+    pub pubkey: PublicKey,
+    pub ip_port: String,
+    pub funding_sats: u64,
+    pub push_sats: u64,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenChannelResponse {
+    pub user_channel_id: u128,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompactChannel {
+    pub channel_id: String,
+    pub counterparty_node_id: PublicKey,
+    pub channel_value_sats: u64,
+    pub user_channel_id: u128,
+    pub outbound_capacity_msat: u64,
+    pub inbound_capacity_msat: u64,
+    pub is_channel_ready: bool,
+    pub is_usable: bool,
+}
+
+impl From<ChannelDetails> for CompactChannel {
+    fn from(channel: ChannelDetails) -> Self {
+        Self {
+            channel_id: channel.channel_id.to_string(),
+            counterparty_node_id: channel.counterparty_node_id,
+            channel_value_sats: channel.channel_value_sats,
+            user_channel_id: channel.user_channel_id.0,
+            outbound_capacity_msat: channel.outbound_capacity_msat,
+            inbound_capacity_msat: channel.inbound_capacity_msat,
+            is_channel_ready: channel.is_channel_ready,
+            is_usable: channel.is_usable,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ListChannelsResponse {
+    pub channels: Vec<CompactChannel>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PayInvoiceRequest {
+    pub invoice: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PayInvoiceResponse {
+    pub payment_hash: String,
 }
 
 #[derive(Debug)]
@@ -233,7 +288,7 @@ impl LspsD {
 
         let lightning_port = get_available_port()?;
         let lightning_socket = SocketAddrV4::new(LOCAL_IP, lightning_port);
-  
+
         args.push("--lightning-port".to_string());
         args.push(format!("{}", lightning_port));
 
@@ -255,8 +310,8 @@ impl LspsD {
         }
 
         if let Some(rgs_url) = &conf.rgs_url {
-          args.push("--rgs-url".to_string());
-          args.push(format!("{}", rgs_url));
+            args.push("--rgs-url".to_string());
+            args.push(format!("{}", rgs_url));
         }
 
         debug!("launching {:?} with args: {:?}", exe.as_ref(), args);
@@ -368,7 +423,7 @@ impl From<std::io::Error> for Error {
 pub fn downloaded_exe_path() -> String {
     let mut path: PathBuf = env!("OUT_DIR").into();
     path.push("lspsd");
-  
+
     if cfg!(target_os = "windows") {
         path.push("lspsd.exe");
     } else {

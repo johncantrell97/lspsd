@@ -38,27 +38,26 @@ mod download {
         let destination_filename = lspsd_exe_home.join("lspsd");
 
         if !destination_filename.exists() {
-          let download_endpoint = std::env::var("LSPSD_DOWNLOAD_ENDPOINT").unwrap_or(
-              "https://github.com/johncantrell97/lspsd/releases/download".to_owned(),
-          );
+            let download_endpoint = std::env::var("LSPSD_DOWNLOAD_ENDPOINT")
+                .unwrap_or("https://github.com/johncantrell97/lspsd/releases/download".to_owned());
 
-          let url = format!("{}/{}/{}", download_endpoint, VERSION, download_filename);
+            let url = format!("{}/{}/{}", download_endpoint, VERSION, download_filename);
 
-          let downloaded_bytes = minreq::get(url).send().unwrap().into_bytes();
+            let downloaded_bytes = minreq::get(url).send().unwrap().into_bytes();
 
-          let cursor = Cursor::new(downloaded_bytes);
+            let cursor = Cursor::new(downloaded_bytes);
 
-          let mut archive = zip::ZipArchive::new(cursor).unwrap();
-          let mut file = archive.by_index(0).unwrap();
-          std::fs::create_dir_all(destination_filename.parent().unwrap()).unwrap();
-          let mut outfile = std::fs::File::create(&destination_filename).unwrap();
+            let mut archive = zip::ZipArchive::new(cursor).unwrap();
+            let mut file = archive.by_index(0).unwrap();
+            std::fs::create_dir_all(destination_filename.parent().unwrap()).unwrap();
+            let mut outfile = std::fs::File::create(&destination_filename).unwrap();
 
-          std::io::copy(&mut file, &mut outfile).unwrap();
-          std::fs::set_permissions(
-              &destination_filename,
-              std::fs::Permissions::from_mode(0o755),
-          )
-          .unwrap();
+            std::io::copy(&mut file, &mut outfile).unwrap();
+            std::fs::set_permissions(
+                &destination_filename,
+                std::fs::Permissions::from_mode(0o755),
+            )
+            .unwrap();
         }
         Ok(())
     }
