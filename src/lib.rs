@@ -98,6 +98,12 @@ pub struct GetInvoiceResponse {
     pub invoice: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetBalanceResponse {
+    pub total_onchain_balance_sats: u64,
+    pub spendable_onchain_balance_sats: u64,
+}
+
 #[derive(Debug)]
 /// Struct representing the lspsd process with related information
 pub struct LspsD {

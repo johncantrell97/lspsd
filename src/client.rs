@@ -6,8 +6,7 @@ use ldk_node::{
 };
 
 use crate::{
-    CompactChannel, FundingAddress, GetInvoiceRequest, GetInvoiceResponse, LspConfig,
-    OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest, PayInvoiceResponse,
+    CompactChannel, FundingAddress, GetBalanceResponse, GetInvoiceRequest, GetInvoiceResponse, LspConfig, OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest, PayInvoiceResponse
 };
 
 #[derive(Debug)]
@@ -43,8 +42,8 @@ impl LspsClient {
         ip_port: SocketAddress,
         funding_sats: u64,
         push_sats: u64,
-    ) -> Result<u128, minreq::Error> {
-        let url = format!("{}/open-channel", self.base_url);
+    ) -> Result<OpenChannelResponse, minreq::Error> {
+        let url = format!("{}/channels", self.base_url);
         let req = OpenChannelRequest {
             pubkey,
             ip_port: ip_port.to_string(),
@@ -52,7 +51,8 @@ impl LspsClient {
             push_sats,
         };
         let res = minreq::post(url).with_json(&req).unwrap().send()?;
-        Ok(res.json::<OpenChannelResponse>()?.user_channel_id)
+        let open_channel_response = res.json::<OpenChannelResponse>()?;
+        Ok(open_channel_response)
     }
 
     pub fn pay_invoice(&self, invoice: &Bolt11Invoice) -> Result<String, minreq::Error> {
@@ -85,5 +85,10 @@ impl LspsClient {
         let url = format!("{}/sync", self.base_url);
         minreq::post(url).send()?;
         Ok(())
+    }
+
+    pub fn get_balance(&self) -> Result<GetBalanceResponse, minreq::Error> {
+        let url = format!("{}/balance", self.base_url);
+        minreq::get(url).send()?.json::<GetBalanceResponse>()
     }
 }

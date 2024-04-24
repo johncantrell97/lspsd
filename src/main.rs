@@ -18,8 +18,7 @@ use tokio::runtime::Runtime;
 
 use argh::FromArgs;
 use lspsd::{
-    FundingAddress, GetInvoiceRequest, GetInvoiceResponse, ListChannelsResponse, LspConfig,
-    OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest, PayInvoiceResponse,
+    FundingAddress, GetBalanceResponse, GetInvoiceRequest, GetInvoiceResponse, ListChannelsResponse, LspConfig, OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest, PayInvoiceResponse
 };
 
 #[derive(FromArgs)]
@@ -85,6 +84,7 @@ fn main() {
         .route("/pay-invoice", post(pay_invoice))
         .route("/get-invoice", post(get_invoice))
         .route("/sync", post(sync))
+        .route("/balance", get(get_balance))
         .with_state(app_state);
 
     let rt = Runtime::new().unwrap();
@@ -174,4 +174,12 @@ async fn get_invoice(
 async fn sync(State(state): State<AppState>) -> Json<Value> {
     state.node.sync_wallets().unwrap();
     Json(json!({"synced": true}))
+}
+
+async fn get_balance(State(state): State<AppState>) -> Json<GetBalanceResponse> {
+    let balances = state.node.list_balances();
+    Json(GetBalanceResponse {
+        total_onchain_balance_sats: balances.total_onchain_balance_sats,
+        spendable_onchain_balance_sats: balances.spendable_onchain_balance_sats,
+    })
 }
