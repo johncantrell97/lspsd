@@ -71,7 +71,7 @@ impl From<ChannelDetails> for CompactChannel {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListChannelsResponse {
     pub channels: Vec<CompactChannel>,
 }
@@ -102,6 +102,12 @@ pub struct GetInvoiceResponse {
 pub struct GetBalanceResponse {
     pub total_onchain_balance_sats: u64,
     pub spendable_onchain_balance_sats: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GetPaymentResponse {
+    pub status: String,
+    pub preimage: Option<String>,
 }
 
 #[derive(Debug)]

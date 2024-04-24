@@ -21,6 +21,7 @@ minreq = { version = "2.9.1", default-features = false, features = [
 log = "0.4.21"
 tempfile = "3.10.1"
 which = "6.0.1"
+hex-conservative = "0.2.0"
 
 [build-dependencies]
 bitcoin_hashes = { version = "0.13" }

@@ -1,13 +1,15 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::routing::post;
 use axum::Json;
 use axum::{routing::get, Router};
+use hex_conservative::DisplayHex;
+use hex_conservative::FromHex;
 use ldk_node::bitcoin::secp256k1::PublicKey;
 use ldk_node::lightning::ln::msgs::SocketAddress;
-use ldk_node::lightning::ln::ChannelId;
+use ldk_node::lightning::ln::{ChannelId, PaymentHash};
 use ldk_node::lightning_invoice::Bolt11Invoice;
 use ldk_node::lightning_persister::fs_store::FilesystemStore;
 use ldk_node::{bitcoin::Network, Builder, Config};
@@ -18,7 +20,9 @@ use tokio::runtime::Runtime;
 
 use argh::FromArgs;
 use lspsd::{
-    FundingAddress, GetBalanceResponse, GetInvoiceRequest, GetInvoiceResponse, ListChannelsResponse, LspConfig, OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest, PayInvoiceResponse
+    FundingAddress, GetBalanceResponse, GetInvoiceRequest, GetInvoiceResponse, GetPaymentResponse,
+    ListChannelsResponse, LspConfig, OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest,
+    PayInvoiceResponse,
 };
 
 #[derive(FromArgs)]
@@ -85,6 +89,7 @@ fn main() {
         .route("/get-invoice", post(get_invoice))
         .route("/sync", post(sync))
         .route("/balance", get(get_balance))
+        .route("/get-payment/:payment_hash", get(get_payment))
         .with_state(app_state);
 
     let rt = Runtime::new().unwrap();
@@ -153,7 +158,7 @@ async fn pay_invoice(
     let invoice = Bolt11Invoice::from_str(&req.invoice).unwrap();
     let res = state.node.send_payment(&invoice).unwrap();
     Json(PayInvoiceResponse {
-        payment_hash: res.to_string(),
+        payment_hash: res.0.to_lower_hex_string(),
     })
 }
 
@@ -181,5 +186,25 @@ async fn get_balance(State(state): State<AppState>) -> Json<GetBalanceResponse> 
     Json(GetBalanceResponse {
         total_onchain_balance_sats: balances.total_onchain_balance_sats,
         spendable_onchain_balance_sats: balances.spendable_onchain_balance_sats,
+    })
+}
+
+async fn get_payment(
+    State(state): State<AppState>,
+    Path(payment_hash): Path<String>,
+) -> Json<GetPaymentResponse> {
+    let payment_hash_bytes = <[u8; 32]>::from_hex(&payment_hash).unwrap();
+    let payment_hash = PaymentHash(payment_hash_bytes);
+    let payment = state.node.payment(&payment_hash).unwrap();
+
+    Json(GetPaymentResponse {
+        status: match payment.status {
+            ldk_node::PaymentStatus::Pending => "pending".to_string(),
+            ldk_node::PaymentStatus::Succeeded => "succeeded".to_string(),
+            ldk_node::PaymentStatus::Failed => "failed".to_string(),
+        },
+        preimage: payment
+            .preimage
+            .map(|preimage| preimage.0.to_lower_hex_string()),
     })
 }

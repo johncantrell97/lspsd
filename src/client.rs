@@ -6,7 +6,9 @@ use ldk_node::{
 };
 
 use crate::{
-    CompactChannel, FundingAddress, GetBalanceResponse, GetInvoiceRequest, GetInvoiceResponse, LspConfig, OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest, PayInvoiceResponse
+    CompactChannel, FundingAddress, GetBalanceResponse, GetInvoiceRequest, GetInvoiceResponse,
+    ListChannelsResponse, LspConfig, OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest,
+    PayInvoiceResponse,
 };
 
 #[derive(Debug)]
@@ -31,9 +33,9 @@ impl LspsClient {
         minreq::get(url).send()?.json::<FundingAddress>()
     }
 
-    pub fn list_channels(&self) -> Result<Vec<CompactChannel>, minreq::Error> {
+    pub fn list_channels(&self) -> Result<ListChannelsResponse, minreq::Error> {
         let url = format!("{}/channels", self.base_url);
-        minreq::get(url).send()?.json::<Vec<CompactChannel>>()
+        minreq::get(url).send()?.json::<ListChannelsResponse>()
     }
 
     pub fn open_channel(
