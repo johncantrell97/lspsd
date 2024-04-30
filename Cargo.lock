@@ -932,7 +932,7 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 [[package]]
 name = "ldk-node"
 version = "0.2.1"
-source = "git+https://github.com/johncantrell97/ldk-node?branch=lsp-server#63eca3d44169554db6bdbe0f59401f68e86d960a"
+source = "git+https://github.com/johncantrell97/ldk-node?rev=f8d5b1af81a54ecc86442ab542fb3c6fc9009ed4#f8d5b1af81a54ecc86442ab542fb3c6fc9009ed4"
 dependencies = [
  "bdk",
  "bip39",
@@ -1012,16 +1012,17 @@ dependencies = [
 
 [[package]]
 name = "lightning-liquidity"
-version = "0.1.0-alpha.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9482742371d445c4ac0884eb263e60bccc06558db21e3ad5c03c16d73f1932f6"
+version = "0.1.0-alpha.3"
+source = "git+https://github.com/johncantrell97/lightning-liquidity?rev=979d75e4ddccaa2b88b42f4b7558825168c11bee#979d75e4ddccaa2b88b42f4b7558825168c11bee"
 dependencies = [
  "bitcoin",
  "chrono",
  "lightning",
  "lightning-invoice",
+ "minreq",
  "serde",
  "serde_json",
+ "url",
 ]
 
 [[package]]
@@ -1093,7 +1094,7 @@ checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 
 [[package]]
 name = "lspsd"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "anyhow",
  "argh",
@@ -1970,6 +1971,7 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+ "serde",
 ]
 
 [[package]]

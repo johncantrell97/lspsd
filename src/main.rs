@@ -7,14 +7,12 @@ use axum::Json;
 use axum::{routing::get, Router};
 use hex_conservative::DisplayHex;
 use hex_conservative::FromHex;
-use ldk_node::bitcoin::secp256k1::PublicKey;
 use ldk_node::lightning::ln::msgs::SocketAddress;
-use ldk_node::lightning::ln::{ChannelId, PaymentHash};
+use ldk_node::lightning::ln::PaymentHash;
 use ldk_node::lightning_invoice::Bolt11Invoice;
 use ldk_node::lightning_persister::fs_store::FilesystemStore;
+use ldk_node::Node;
 use ldk_node::{bitcoin::Network, Builder, Config};
-use ldk_node::{ChannelDetails, Node};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::runtime::Runtime;
 
@@ -193,6 +191,7 @@ async fn get_payment(
     State(state): State<AppState>,
     Path(payment_hash): Path<String>,
 ) -> Json<GetPaymentResponse> {
+    println!("{}", payment_hash);
     let payment_hash_bytes = <[u8; 32]>::from_hex(&payment_hash).unwrap();
     let payment_hash = PaymentHash(payment_hash_bytes);
     let payment = state.node.payment(&payment_hash).unwrap();

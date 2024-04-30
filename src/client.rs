@@ -7,8 +7,8 @@ use ldk_node::{
 
 use crate::{
     CompactChannel, FundingAddress, GetBalanceResponse, GetInvoiceRequest, GetInvoiceResponse,
-    ListChannelsResponse, LspConfig, OpenChannelRequest, OpenChannelResponse, PayInvoiceRequest,
-    PayInvoiceResponse,
+    GetPaymentResponse, ListChannelsResponse, LspConfig, OpenChannelRequest, OpenChannelResponse,
+    PayInvoiceRequest, PayInvoiceResponse,
 };
 
 #[derive(Debug)]
@@ -92,5 +92,10 @@ impl LspsClient {
     pub fn get_balance(&self) -> Result<GetBalanceResponse, minreq::Error> {
         let url = format!("{}/balance", self.base_url);
         minreq::get(url).send()?.json::<GetBalanceResponse>()
+    }
+
+    pub fn get_payment(&self, payment_hash: &str) -> Result<GetPaymentResponse, minreq::Error> {
+        let url = format!("{}/get-payment/{}", self.base_url, payment_hash);
+        minreq::get(url).send()?.json::<GetPaymentResponse>()
     }
 }
