@@ -1,6 +1,6 @@
 [package]
 name = "lspsd"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 build = "build.rs"
 
@@ -11,7 +11,7 @@ build = "build.rs"
 anyhow = "1.0.66"
 argh = "0.1.12"
 axum = "0.7.5"
-ldk-node = { git = "https://github.com/johncantrell97/ldk-node", rev = "f8d5b1af81a54ecc86442ab542fb3c6fc9009ed4" }
+ldk-node = { git = "https://github.com/johncantrell97/ldk-node.git", rev = "eb9d813e4fdd602a19b468af313a2167da4298b8" }
 serde = { version = "1.0.198", features = ["derive"] }
 serde_json = "1.0.116"
 tokio = { version = "1.37.0", features = ["full"] }
@@ -22,6 +22,7 @@ log = "0.4.21"
 tempfile = "3.10.1"
 which = "6.0.1"
 hex-conservative = "0.2.0"
+electrsd = { version= "0.27.3", features = ["bitcoind_25_0", "esplora_a33e97e1", "legacy"] }
 
 [build-dependencies]
 bitcoin_hashes = { version = "0.13" }

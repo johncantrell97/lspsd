@@ -1,4 +1,5 @@
 pub mod client;
+pub mod utils;
 mod versions;
 
 use anyhow::Context;
@@ -29,6 +30,11 @@ pub struct LspConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FundingAddress {
+    pub address: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FaucetRequest {
     pub address: String,
 }
 
