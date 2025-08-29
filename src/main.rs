@@ -7,14 +7,13 @@ use axum::routing::post;
 use axum::Json;
 use axum::{routing::get, Router};
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
-use hex_conservative::DisplayHex;
-use hex_conservative::FromHex;
 use ldk_node::lightning::ln::msgs::SocketAddress;
-use ldk_node::lightning::ln::PaymentHash;
 use ldk_node::lightning_invoice::Bolt11Invoice;
+use ldk_node::lightning::ln::channelmanager::PaymentId;
 use ldk_node::Event;
 use ldk_node::Node;
-use ldk_node::{bitcoin::Network, Builder, Config};
+use ldk_node::{bitcoin::Network, Builder, config::Config};
+use hex::FromHex;
 use lspsd::client::LspsClient;
 use serde_json::{json, Value};
 use tokio::runtime::Runtime;
@@ -96,8 +95,18 @@ fn main() {
     };
 
     let mut builder = Builder::from_config(config);
-    builder.set_esplora_server(esplora_url.clone());
-    builder.set_liquidity_provider_lsps2();
+    builder.set_chain_source_esplora(esplora_url.clone(), None);
+    builder.set_liquidity_provider_lsps2(ldk_node::liquidity::LSPS2ServiceConfig {
+        require_token: None,
+        advertise_service: true,
+        channel_opening_fee_ppm: 0,
+        channel_over_provisioning_ppm: 500_000,
+        min_channel_opening_fee_msat: 0,
+        min_channel_lifetime: 100,
+        max_client_to_self_delay: 72,
+        min_payment_size_msat: 1000,
+        max_payment_size_msat: 100_000_000_000,
+    });
 
     if let Some(rgs_url) = args.rgs_url {
         builder.set_gossip_source_rgs(rgs_url);
@@ -116,7 +125,7 @@ fn main() {
             node.node_id().to_string(),
             args.lightning_port
         );
-        let funding_address = node.new_onchain_address().unwrap();
+        let funding_address = node.onchain_payment().new_address().unwrap();
         let funding_address = electrsd::bitcoind::bitcoincore_rpc::bitcoin::Address::from_str(
             &funding_address.to_string(),
         )
@@ -230,7 +239,7 @@ async fn config_handler(State(state): State<AppState>) -> Json<LspConfig> {
 
 async fn funding_address(State(state): State<AppState>) -> Json<FundingAddress> {
     Json(FundingAddress {
-        address: state.node.new_onchain_address().unwrap().to_string(),
+        address: state.node.onchain_payment().new_address().unwrap().to_string(),
     })
 }
 
@@ -240,7 +249,8 @@ async fn faucet(State(state): State<AppState>, Json(req): Json<FaucetRequest>) -
         .assume_checked();
     let txid = state
         .node
-        .send_to_onchain_address(&address, 100_000_000)
+        .onchain_payment()
+        .send_to_address(&address, 100_000_000, None)
         .unwrap();
 
     if let Some(esplora) = &state.esplora {
@@ -268,13 +278,12 @@ async fn open_channel(
     let socket_addr = SocketAddress::from_str(&req.ip_port).unwrap();
     let res = state
         .node
-        .connect_open_channel(
+        .open_channel(
             req.pubkey,
             socket_addr,
             req.funding_sats,
             Some(req.push_sats * 1000),
             None,
-            true,
         )
         .unwrap();
 
@@ -329,9 +338,9 @@ async fn pay_invoice(
     Json(req): Json<PayInvoiceRequest>,
 ) -> Json<PayInvoiceResponse> {
     let invoice = Bolt11Invoice::from_str(&req.invoice).unwrap();
-    let res = state.node.send_payment(&invoice).unwrap();
+    let res = state.node.bolt11_payment().send(&invoice, None).unwrap();
     Json(PayInvoiceResponse {
-        payment_hash: res.0.to_lower_hex_string(),
+        payment_id: res.to_string(),
     })
 }
 
@@ -339,9 +348,11 @@ async fn get_invoice(
     State(state): State<AppState>,
     Json(req): Json<GetInvoiceRequest>,
 ) -> Json<GetInvoiceResponse> {
+    let description = ldk_node::lightning_invoice::Bolt11InvoiceDescription::Direct(ldk_node::lightning_invoice::Description::new(req.description.clone()).unwrap());
     let invoice = state
         .node
-        .receive_payment(req.amount_sats * 1000, &req.description, req.expiry_secs)
+        .bolt11_payment()
+        .receive(req.amount_sats * 1000, &description, req.expiry_secs)
         .unwrap();
 
     Json(GetInvoiceResponse {
@@ -364,20 +375,17 @@ async fn get_balance(State(state): State<AppState>) -> Json<GetBalanceResponse> 
 
 async fn get_payment(
     State(state): State<AppState>,
-    Path(payment_hash): Path<String>,
+    Path(payment_id): Path<String>,
 ) -> Json<GetPaymentResponse> {
-    let payment_hash_bytes = <[u8; 32]>::from_hex(&payment_hash).unwrap();
-    let payment_hash = PaymentHash(payment_hash_bytes);
-    let payment = state.node.payment(&payment_hash).unwrap();
+    let payment_id_bytes = <[u8; 32]>::from_hex(&payment_id).unwrap();
+    let payment_id = PaymentId(payment_id_bytes);
+    let payment = state.node.payment(&payment_id).unwrap();
 
     Json(GetPaymentResponse {
         status: match payment.status {
-            ldk_node::PaymentStatus::Pending => "pending".to_string(),
-            ldk_node::PaymentStatus::Succeeded => "succeeded".to_string(),
-            ldk_node::PaymentStatus::Failed => "failed".to_string(),
+            ldk_node::payment::PaymentStatus::Pending => "pending".to_string(),
+            ldk_node::payment::PaymentStatus::Succeeded => "succeeded".to_string(),
+            ldk_node::payment::PaymentStatus::Failed => "failed".to_string(),
         },
-        preimage: payment
-            .preimage
-            .map(|preimage| preimage.0.to_lower_hex_string()),
     })
 }

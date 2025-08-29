@@ -89,7 +89,7 @@ pub struct PayInvoiceRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PayInvoiceResponse {
-    pub payment_hash: String,
+    pub payment_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,7 +113,6 @@ pub struct GetBalanceResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetPaymentResponse {
     pub status: String,
-    pub preimage: Option<String>,
 }
 
 #[derive(Debug)]

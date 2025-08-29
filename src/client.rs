@@ -63,7 +63,7 @@ impl LspsClient {
             invoice: invoice.to_string(),
         };
         let res = minreq::post(url).with_json(&req).unwrap().send()?;
-        Ok(res.json::<PayInvoiceResponse>()?.payment_hash)
+        Ok(res.json::<PayInvoiceResponse>()?.payment_id)
     }
 
     pub fn get_invoice(
