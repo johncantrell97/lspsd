@@ -328,19 +328,19 @@ impl LspsD {
         };
 
         args.push("--network".to_string());
-        args.push(format!("{}", conf.network));
+        args.push(conf.network.to_string());
 
         args.push("--data-dir".to_string());
         args.push(format!("{}", work_dir_path.display()));
 
         if let Some(esplora_url) = &conf.esplora_url {
             args.push("--esplora-url".to_string());
-            args.push(format!("{}", esplora_url));
+            args.push(esplora_url.to_string());
         }
 
         if let Some(rgs_url) = &conf.rgs_url {
             args.push("--rgs-url".to_string());
-            args.push(format!("{}", rgs_url));
+            args.push(rgs_url.to_string());
         }
 
         debug!("launching {:?} with args: {:?}", exe.as_ref(), args);
@@ -466,7 +466,7 @@ pub fn downloaded_exe_path() -> String {
 ///
 /// 1) If it's specified in the `BITCOIND_EXE` env var
 /// 2) If there is no env var but an auto-download feature such as `23_1` is enabled, returns the
-/// path of the downloaded executabled
+///    path of the downloaded executabled
 /// 3) If neither of the precedent are available, the `lspsd` executable is searched in the `PATH`
 pub fn exe_path() -> anyhow::Result<String> {
     if let Ok(path) = std::env::var("LSPSD_EXE") {

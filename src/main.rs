@@ -7,16 +7,15 @@ use axum::routing::post;
 use axum::Json;
 use axum::{routing::get, Router};
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
+use hex::FromHex;
+use ldk_node::lightning::ln::channelmanager::PaymentId;
 use ldk_node::lightning::ln::msgs::SocketAddress;
 use ldk_node::lightning_invoice::Bolt11Invoice;
-use ldk_node::lightning::ln::channelmanager::PaymentId;
 use ldk_node::Event;
 use ldk_node::Node;
-use ldk_node::{bitcoin::Network, Builder, config::Config};
-use hex::FromHex;
+use ldk_node::{bitcoin::Network, Builder};
 use lspsd::client::LspsClient;
 use serde_json::{json, Value};
-use tokio::runtime::Runtime;
 
 use argh::FromArgs;
 use lspsd::{
@@ -30,16 +29,16 @@ use lspsd::{
 struct LspArgs {
     /// data directory used to store node info
     #[argh(option)]
-    data_dir: String,
+    data_dir: Option<String>,
     /// what bitcoin network to operate on
     #[argh(option)]
     network: Option<Network>,
     /// what p2p port to listen on
     #[argh(option)]
-    lightning_port: u16,
+    lightning_port: Option<u16>,
     /// what port to use for the http api
     #[argh(option)]
-    api_port: u16,
+    api_port: Option<u16>,
     /// what esplora server to use
     #[argh(option)]
     esplora_url: Option<String>,
@@ -58,15 +57,23 @@ struct AppState {
 }
 
 fn main() {
+    let rt = Arc::new(tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap());
+
     let args: LspArgs = argh::from_env();
 
-    let mut config = Config::default();
-    config.storage_dir_path = args.data_dir.clone();
-    config.network = args.network.unwrap_or(Network::Regtest);
-    config.listening_addresses = Some(vec![SocketAddress::TcpIpV4 {
-        addr: [0, 0, 0, 0],
-        port: args.lightning_port,
-    }]);
+    let data_dir = args.data_dir.unwrap_or("lsp".to_string());
+    let lightning_port = args.lightning_port.unwrap_or(9735);
+    let api_port = args.api_port.unwrap_or(3000);
+
+    let config = ldk_node::config::Config {
+        storage_dir_path: data_dir.clone(),
+        network: args.network.unwrap_or(Network::Regtest),
+        listening_addresses: Some(vec![SocketAddress::TcpIpV4 {
+            addr: [0, 0, 0, 0],
+            port: lightning_port,
+        }]),
+        ..Default::default()
+    };
 
     let (esplora_url, bitcoin, esplora) = match args.esplora_url {
         Some(esplora_url) => (esplora_url, None, None),
@@ -78,11 +85,12 @@ fn main() {
             let esplora = utils::get_esplorad(&bitcoind);
             let esplora_url = format!("http://{}", esplora.esplora_url.clone().unwrap());
 
-            std::fs::remove_dir_all(args.data_dir.clone()).unwrap();
-            std::fs::remove_dir_all(format!("{}.child", &args.data_dir)).unwrap();
+            let _ignore = std::fs::remove_dir_all(data_dir.clone());
+            let _ignore = std::fs::remove_dir_all(format!("{}.child", &data_dir));
+            let _ignore = std::fs::remove_dir_all(format!("{}.cashu", &data_dir));
 
             println!(
-                "no esplora_url provided, started a server at: {}",
+                "Esplora URL: {}",
                 esplora_url
             );
 
@@ -120,11 +128,9 @@ fn main() {
 
     // if no esplora url was given, then we started our own so lets fund ourselves
     if let (Some(bitcoin), Some(esplora)) = (&bitcoin, &esplora) {
-        println!(
-            "{}@127.0.0.1:{}",
-            node.node_id().to_string(),
-            args.lightning_port
-        );
+
+        println!("LSP Node ID: {}", node.node_id());
+        println!("LSP Address: 127.0.0.1:{}", lightning_port);
         let funding_address = node.onchain_payment().new_address().unwrap();
         let funding_address = electrsd::bitcoind::bitcoincore_rpc::bitcoin::Address::from_str(
             &funding_address.to_string(),
@@ -151,10 +157,29 @@ fn main() {
         esplora.wait_height(height);
         node.sync_wallets().unwrap();
 
-        let child_data_dir = format!("{}.child", &args.data_dir);
-        let child_lightning_port = format!("{}", args.lightning_port + 1);
-        let child_api_port = format!("{}", args.api_port + 1);
-        let lspsd_faucet_url = format!("http://localhost:{}", args.api_port);
+        utils::start_cashu_mint(
+            bitcoin.clone(), 
+            format!("{}.cashu", data_dir.clone()), 
+            rt.clone(),
+            node.node_id(),
+            node.listening_addresses().unwrap().first().unwrap().clone(),
+        );
+
+        // utils::start_cashu_mint(
+        //     bitcoin.clone(), 
+        //     format!("{}.cashu2", data_dir.clone()), 
+        //     rt.clone(),
+        //     node.node_id(),
+        //     node.listening_addresses().unwrap().first().unwrap().clone(),
+        // );
+
+        let child_data_dir = format!("{}.child", &data_dir);
+        let child_lightning_port = format!("{}", lightning_port + 1);
+        let child_api_port = format!("{}", api_port + 1);
+        let lspsd_faucet_url = format!("http://localhost:{}", api_port);
+
+        println!("LSP Node API URL: http://localhost:{}", api_port);
+
         let child_args = vec![
             "--data-dir",
             &child_data_dir,
@@ -167,18 +192,18 @@ fn main() {
             "--lspsd-faucet-url",
             &lspsd_faucet_url,
         ];
-
+        
         let _child = Command::new(std::env::current_exe().unwrap())
             .args(&child_args)
             .spawn()
             .expect("failed to spawn child process");
+    } else {
+        println!("Payer Node API URL: http://localhost:{}", api_port);
     }
 
     // if a faucet url was given, we can fund our node from there and then open a channel to them
     if let Some(lspsd_faucet_url) = args.lspsd_faucet_url {
-        println!("node started with a faucet provided: {}", lspsd_faucet_url);
-
-        let ip_port = format!("127.0.0.1:{}", args.lightning_port);
+        let ip_port = format!("127.0.0.1:{}", lightning_port);
         let faucet_client = LspsClient::new(&lspsd_faucet_url);
         faucet_client
             .open_channel(
@@ -190,11 +215,6 @@ fn main() {
             .unwrap();
 
         node.sync_wallets().unwrap();
-
-        println!(
-            "node now has a channel with the faucet: {:?}",
-            node.list_balances()
-        );
     }
 
     let app_state = AppState {
@@ -212,17 +232,13 @@ fn main() {
         .route("/get-invoice", post(get_invoice))
         .route("/sync", post(sync))
         .route("/balance", get(get_balance))
-        .route("/get-payment/:payment_hash", get(get_payment))
+        .route("/get-payment/{payment_hash}", get(get_payment))
         .with_state(app_state);
 
-    let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", args.api_port))
+        let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", api_port))
             .await
             .unwrap();
-
-        println!("started http server listening on port: {}", args.api_port);
-
         axum::serve(listener, app).await.unwrap();
     });
 }
@@ -239,7 +255,12 @@ async fn config_handler(State(state): State<AppState>) -> Json<LspConfig> {
 
 async fn funding_address(State(state): State<AppState>) -> Json<FundingAddress> {
     Json(FundingAddress {
-        address: state.node.onchain_payment().new_address().unwrap().to_string(),
+        address: state
+            .node
+            .onchain_payment()
+            .new_address()
+            .unwrap()
+            .to_string(),
     })
 }
 
@@ -308,11 +329,15 @@ async fn open_channel(
                 }
 
                 if let Event::ChannelReady { .. } = event {
-                    state.node.event_handled();
+                    if let Err(e) = state.node.event_handled() {
+                        println!("failed to handle channel ready event: {}", e);
+                    }
                     break;
                 }
 
-                state.node.event_handled();
+                if let Err(e) = state.node.event_handled() {
+                    println!("failed to handle event: {}", e);
+                }
             }
         }
     }
@@ -348,7 +373,9 @@ async fn get_invoice(
     State(state): State<AppState>,
     Json(req): Json<GetInvoiceRequest>,
 ) -> Json<GetInvoiceResponse> {
-    let description = ldk_node::lightning_invoice::Bolt11InvoiceDescription::Direct(ldk_node::lightning_invoice::Description::new(req.description.clone()).unwrap());
+    let description = ldk_node::lightning_invoice::Bolt11InvoiceDescription::Direct(
+        ldk_node::lightning_invoice::Description::new(req.description.clone()).unwrap(),
+    );
     let invoice = state
         .node
         .bolt11_payment()
